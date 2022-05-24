@@ -8,6 +8,6 @@ erl -make
 This is the fastest way to get the app up and running.
 ````
 erl -make
-erl
-app:app().
+erl -pa .\bin\
+app:start().
 ````

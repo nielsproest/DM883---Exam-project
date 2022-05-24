@@ -1,3 +1,3 @@
 {'*',
-    [{outdir,"./"},
+    [{outdir,"./bin"},
     debug_info]}.
