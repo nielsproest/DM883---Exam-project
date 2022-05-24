@@ -5,9 +5,15 @@
 -import_all(client).
 
 start() ->
-    Clients = bootstrap_clients(3, []),
 
-    spawn(fun() -> server:handle(Clients) end),
+    Server = spawn(fun() -> client:handle() end),
+    Intermidiate = spawn(fun() -> client:handle() end),
+    Client = spawn(fun() -> client:handle() end),
+
+    Server ! {setup, [Intermidate, Client]} 
+    Intermidiate ! {setup, [Server, Client]} 
+    Client ! {setup, [Server, Intermidiate]} 
+
 
     ok.
 
