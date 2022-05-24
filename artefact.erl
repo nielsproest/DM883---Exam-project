@@ -1,6 +1,9 @@
+-module(artefact).
+
+-export([start/0]).
 
 -record(state, {
-	neighbors :: [],
+	neighbors :: []
 }).
 
 send_msg([], _) -> ok;
@@ -9,9 +12,8 @@ send_msg([{Pid} | Rest], Msg) ->
 	send_msg(Rest, Msg).
 
 send_data(S, Data) ->
-	send_msg(S#neighbors, {recv, Data})
+	send_msg(S#state.neighbors, {recv, Data}).
 
--spec(loop(#state{}) -> no_return()).
 loop(S) -> 
 	receive
 		% Start (dummy)
@@ -20,7 +22,9 @@ loop(S) ->
 		{ state, _S } -> loop(_S);
 
 		{ recv, Data } -> 
-			io:format("~p received: ~p!\n", [self(), Data]);
+			io:format("~p received: ~p!\n", [self(), Data]),
+			send_data(S, Data),
+			loop(S);
 
 		_ -> error % Wrong command
 	after 2000 -> error % Inactivity
@@ -31,7 +35,7 @@ gen_state(Neighbor) ->
 		neighbors = Neighbor
 	}.
 
-server_proc(nodes) -> 
+server_proc([nodes]) -> 
     {ok,[N]} = io:fread("","~d"),
 	send_msg(nodes, {recv, N}),
 	server_proc(nodes).
