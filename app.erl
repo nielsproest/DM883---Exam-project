@@ -17,19 +17,19 @@ start() ->
     Intermidiate ! {setup, [Server, Client]}, 
     Client ! {setup, [Server, Intermidiate]} ,
 
-    stream(Server, 0),
+    stream(Server, "Hello", 0),
 
     ok.
 
-stream(_, 10) -> ok;
-stream(Node, N) -> 
+stream(_, [], _) -> ok;
+stream(Node, [ H | T], N) -> 
     Node ! { packet, #message {
-        data = helpers:generate_data(),
+        data = H,
         sender = self(),
         timestamp = N,
         stream = 0
     }},
-    stream(Node, N + 1).
+    stream(Node, T, N + 1).
 
 
 

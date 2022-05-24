@@ -26,7 +26,7 @@ run(S) ->
         { packet, Data } when Data#message.timestamp >= S#state.timestamp ->
             
             % Internal processing
-            io:format("~p received ~p\n", [self(), Data#message.data]),
+            io:format("~p received ~c\n", [self(), Data#message.data]),
 
             % Distribute to some neighbours
             distribute(
