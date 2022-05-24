@@ -20,7 +20,7 @@ loop(S) ->
 		{ state, _S } -> loop(_S);
 
 		{ recv, Data } -> 
-			io:format("~p was received!\n", [Data]);
+			io:format("~p received: ~p!\n", [self(), Data]);
 
 		_ -> error % Wrong command
 	after 2000 -> error % Inactivity
@@ -40,9 +40,9 @@ start() ->
 	Pid1 = spawn(fun() -> loop(#state{}) end),
 	Pid2 = spawn(fun() -> loop(#state{}) end),
 	Pid3 = spawn(fun() -> loop(#state{}) end),
-	Pid1 ! {state, gen_state([Pid2,Pid5])},
-	Pid2 ! {state, gen_state([Pid1,Pid3])},
-	Pid3 ! {state, gen_state([Pid2,Pid4])},
+	Pid1 ! {state, gen_state([])},
+	Pid2 ! {state, gen_state([])},
+	Pid3 ! {state, gen_state([])},
 	Pid1 ! start,
 	Pid2 ! start,
 	Pid3 ! start,
