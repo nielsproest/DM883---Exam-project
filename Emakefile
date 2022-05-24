@@ -1,0 +1,3 @@
+{'*',
+    [{outdir,"./"},
+    debug_info]}.
