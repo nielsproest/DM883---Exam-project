@@ -7,7 +7,7 @@
 }).
 
 send_msg([], _) -> ok;
-send_msg([{Pid} | Rest], Msg) ->
+send_msg([Pid | Rest], Msg) ->
 	Pid ! Msg,
 	send_msg(Rest, Msg).
 
@@ -35,10 +35,10 @@ gen_state(Neighbor) ->
 		neighbors = Neighbor
 	}.
 
-server_proc([nodes]) -> 
+server_proc(Nodes) -> 
     {ok,[N]} = io:fread("","~d"),
-	send_msg(nodes, {recv, N}),
-	server_proc(nodes).
+	send_msg(Nodes, {recv, N}),
+	server_proc(Nodes).
 
 start() ->
 	Pid1 = spawn(fun() -> loop(#state{}) end),
