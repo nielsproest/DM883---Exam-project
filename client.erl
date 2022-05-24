@@ -4,53 +4,49 @@
 
 -export([handle/0]).
 
+% When node 
+handle() -> 
+    State = setup(),
+    run(State).
 
+% Node awaits a setup message to build the node state
+setup() ->
+    receive
+        { setup, Neighbours } ->
+            State = #state{
+                neighbours = Neighbours,
+                timestamp = 0
+            }
+    end,
+    State.
 
-packet_handle(S, Data) ->
-	io:format("~p received ~p\n", [self(), Data#message.data]),
-    sent_to_neighbours(
-		S#state.neighbours, 
-		{ packet, Data#message {
-			sender = self()
-		} }
-	),
-	client_loop(S#state {
-		timestamp = Data#message.timestamp
-	}).
-
-send_handle(S, Msg) ->
-	io:format("~p sends ~p\n", [self(), Msg]),
-	sent_to_neighbours(
-		S#state.neighbours, 
-		{ packet, #message {
-			data = Msg,
-			sender = self(),
-			timestamp = S#state.timestamp + 1,
-			stream = 0
-		} }
-	),
-	client_loop(S#state {
-		timestamp = S#state.timestamp + 1
-	}).
-
-client_loop(S) ->
+% Running nodes continously wait for new packets to handle.
+run(S) ->
     receive 
-		{ setup, Neighbours } ->
-			client_loop(#state{
-		        neighbours = Neighbours,
-		        timestamp = 0
-			});
-        { packet, Data } when Data#message.timestamp > S#state.timestamp ->
-			packet_handle(S,Data);
-		{ send, Data } -> 
-			send_handle(S, Data);
+        { packet, Data } when Data#message.timestamp >= S#state.timestamp ->
+            
+            % Internal processing
+            io:format("~p received ~p\n", [self(), Data#message.data]),
 
-        _ -> client_loop(S)
+            % Distribute to some neighbours
+            distribute(
+                S#state.neighbours, Data
+            ),
+
+            % Listen for next message and increment timestamp
+            run(S#state {
+                timestamp = S#state.timestamp + 1
+            })
+
     end.
- 
-handle() -> client_loop(#state{}).
 
-sent_to_neighbours([], _) -> ok;
-sent_to_neighbours([H | T], Msg) ->
-    H ! Msg,
-	sent_to_neighbours(T, Msg).
+distribute([], _) -> ok;
+distribute([H | T], Data) ->
+
+    Msg = Data#message {
+        sender = self()
+    },
+
+    H ! { packet, Msg },
+
+	distribute(T, Msg).
