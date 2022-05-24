@@ -1,18 +1,10 @@
 -module(client).
+
+-include_lib("headers/records.hrl").
+
 -export([handle/0]).
 
--record(state, {
-	neighbours :: [],
-    timestamp :: integer()
-}).
 
--record(message, {
-	data :: byte(),
-    sender :: pid(),
-    timestamp :: integer(),
-    stream :: integer()
-
-}).
 
 packet_handle(S, Data) ->
 	io:format("~p received ~p\n", [self(), Data#message.data]),
