@@ -14,7 +14,7 @@ start() ->
     Intermidiate ! {setup, [Server, Client]}, 
     Client ! {setup, [Server, Intermidiate]} ,
 
-    Client ! { send, "Hello!" },
+    Server ! { send, "Hello!" },
 
     ok.
 
