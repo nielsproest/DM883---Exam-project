@@ -14,8 +14,8 @@ send_data(S, Data) ->
 -spec(loop(#state{}) -> no_return()).
 loop(S) -> 
 	receive
-
-		start -> start_proc(S);
+		% Start (dummy)
+		start -> loop(S);
 		% Set state
 		{ state, _S } -> loop(_S);
 
@@ -31,6 +31,11 @@ gen_state(Neighbor) ->
 		neighbors = Neighbor
 	}.
 
+server_proc(nodes) -> 
+    {ok,[N]} = io:fread("","~d"),
+	send_msg(nodes, {recv, N}),
+	server_proc(nodes).
+
 start() ->
 	Pid1 = spawn(fun() -> loop(#state{}) end),
 	Pid2 = spawn(fun() -> loop(#state{}) end),
@@ -41,4 +46,4 @@ start() ->
 	Pid1 ! start,
 	Pid2 ! start,
 	Pid3 ! start,
-	Pid1.
+	server_proc([Pid1,Pid2,Pid3]).
