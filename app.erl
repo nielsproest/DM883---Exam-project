@@ -10,10 +10,14 @@ start() ->
     Intermidiate = spawn(fun() -> client:handle() end),
     Client = spawn(fun() -> client:handle() end),
 
-    Server ! {setup, [Intermidate, Client]} 
-    Intermidiate ! {setup, [Server, Client]} 
-    Client ! {setup, [Server, Intermidiate]} 
+    Server ! {setup, [Intermidiate, Client]},
+    Intermidiate ! {setup, [Server, Client]}, 
+    Client ! {setup, [Server, Intermidiate]} ,
 
+
+    Server ! { stream },
+
+    Client ! { rec },
 
     ok.
 
