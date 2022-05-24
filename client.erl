@@ -1,5 +1,5 @@
 -module(client).
--export([handle/1]).
+-export([handle/0]).
 
 -record(state, {
 	neighbours :: [],
@@ -14,22 +14,54 @@
 
 }).
 
-handle(Neighbours) -> 
+packet_handle(S, Data) ->
+    sent_to_neighbours(
+		lists:filter(
+			fun({Pid}) -> Pid /= Data#message.sender end, 
+			S#state.neighbours
+		), 
+		Data#message {
+			sender = self()
+		}
+	),
+	io:format("~p received ~p\n", [self(), Data#message.data]),
+	client_loop(S#state {
+		timestamp = Data#message.timestamp
+	}).
 
-    S = #state{
-        neighbours = Neighbours,
-        timestamp = 0
-    },
+send_handle(S, Msg) ->
+	sent_to_neighbours(
+		S#state.neighbours, 
+		#message {
+			data = Msg,
+			sender = self(),
+			timestamp = S#state.timestamp,
+			stream = 0
+		}
+	),
+	io:format("~p sends ~p\n", [self(), Msg]),
+	client_loop(S#state {
+		timestamp = S#state.timestamp + 1
+	}).
 
+client_loop(S) ->
     receive 
-        { packet, Data, Timestamp, Sender, Stream } when Timestamp > S#state.timestamp ->
-            
-            send_to
+		{ setup, Neighbours } ->
+			client_loop(#state{
+		        neighbours = Neighbours,
+		        timestamp = 0
+			});
+        { packet, Data } when Data#message.timestamp > S#state.timestamp ->
+			packet_handle(S,Data);
+		{ send, Data } -> 
+			send_handle(S, Data);
 
-        _ -> ok
+        _ -> client_loop(S)
     end.
-        
+ 
+handle() -> client_loop(#state{}).
 
-sent_to_neighbours([]) ->
-sent_to_neighbours([ H | T]) ->
-    H ! {}
+sent_to_neighbours([], _) -> ok;
+sent_to_neighbours([H | T], Msg) ->
+    H ! Msg,
+	sent_to_neighbours(T, Msg).

@@ -14,10 +14,7 @@ start() ->
     Intermidiate ! {setup, [Server, Client]}, 
     Client ! {setup, [Server, Intermidiate]} ,
 
-
-    Server ! { stream },
-
-    Client ! { rec },
+    Client ! { send, "Hello!" },
 
     ok.
 

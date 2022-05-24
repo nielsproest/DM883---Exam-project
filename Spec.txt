@@ -1,0 +1,33 @@
+
+//Receive data
+[
+	recv,
+	From,		//From ID
+	Msg,		//Message
+	Timestamp,	//Timestamp
+	Id,			//Stream ID
+	Hoops		//Number of hoops passed
+]
+Sends to all neighbors.
+Problems:
+	Do we store latest timestamp or other solution for not infinite loop?
+	Hoops might be used to find shortest path (find nodes to not send to, unless down then forget?)
+
+//Client wants to stream announcement
+[
+	stream_broadcast,
+	Id			//Stream ID
+]
+
+//Articial functions for testing functionality
+//Client wants to stream
+[
+	stream
+]
+
+//Client wants to view stream
+[
+	stream_view,
+	Id			//Stream ID
+]
+
