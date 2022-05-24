@@ -17,10 +17,7 @@
 packet_handle(S, Data) ->
 	io:format("~p received ~p\n", [self(), Data#message.data]),
     sent_to_neighbours(
-		lists:filter(
-			fun({Pid}) -> Pid /= Data#message.sender end, 
-			S#state.neighbours
-		), 
+		S#state.neighbours, 
 		{ packet, Data#message {
 			sender = self()
 		} }
@@ -36,7 +33,7 @@ send_handle(S, Msg) ->
 		{ packet, #message {
 			data = Msg,
 			sender = self(),
-			timestamp = S#state.timestamp,
+			timestamp = S#state.timestamp + 1,
 			stream = 0
 		} }
 	),
@@ -51,7 +48,7 @@ client_loop(S) ->
 		        neighbours = Neighbours,
 		        timestamp = 0
 			});
-        { packet, Data } when Data#message.timestamp >= S#state.timestamp ->
+        { packet, Data } when Data#message.timestamp > S#state.timestamp ->
 			packet_handle(S,Data);
 		{ send, Data } -> 
 			send_handle(S, Data);
