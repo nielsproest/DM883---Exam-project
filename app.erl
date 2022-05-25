@@ -5,7 +5,7 @@
 
 -import_all(helpers).
 -import_all(server).
--import_all(client).
+-import_all(node).
 
 start() ->
 

@@ -1,4 +1,4 @@
--module(client).
+-module(node).
 
 -include_lib("headers/records.hrl").
 
