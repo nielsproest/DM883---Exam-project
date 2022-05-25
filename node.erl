@@ -2,43 +2,55 @@
 
 -include_lib("headers/records.hrl").
 
--export([handle/0]).
+-export([run/1]).
 
-% When node 
-handle() -> 
-    State = setup(),
-    run(State).
 
-% Node awaits a setup message to build the node state
-setup() ->
-    receive
-        { setup, Neighbours } ->
-            State = #state{
-                neighbours = Neighbours,
-                timestamp = 0
-            }
-    end,
-    State.
+-import_all(rand).
+-import_all(lists).
+
+
 
 % Running nodes continously wait for new packets to handle.
 run(S) ->
     receive 
-        { packet, Data } when Data#message.timestamp >= S#state.timestamp ->
+		{ join, ClientPid } -> 
+
+			run(
+				attempt_to_join(S, ClientPid)
+			);
+
+        { packet, Data } ->
             
             % Internal processing
             io:format("~p received ~c\n", [self(), Data#message.data]),
 
             % Distribute to some neighbours
             distribute(
-                S#state.neighbours, Data
+                S#state.children, Data
             ),
 
             % Listen for next message and increment timestamp
-            run(S#state {
-                timestamp = S#state.timestamp + 1
-            })
-
+            run(S)
     end.
+
+attempt_to_join(S, Pid) ->
+	case length(S#state.children) =< S#state.capacity  of
+		true -> 
+			accept_join(S, Pid);
+		false -> 
+			refuse_join(S, Pid)
+	end.
+
+accept_join(S, Pid) -> 
+	Pid ! { join_ok },
+	S#state {
+		children = S#state.children ++ [Pid]
+	}.
+
+refuse_join(S, Pid) ->
+	Pid ! { join_refuse, lists:nth(rand:uniform(length(S#state.children)), S#state.children) },
+	S.
+
 
 distribute([], _) -> ok;
 distribute([H | T], Data) ->

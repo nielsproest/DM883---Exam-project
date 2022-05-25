@@ -6,35 +6,34 @@
 -import_all(helpers).
 -import_all(server).
 -import_all(node).
+-import_all(group).
 
 start() ->
 
-	Server = spawn(fun() -> client:server_setup() end),
-	Intermidiate = spawn(fun() -> client:client_setup(Server, Server) end),
-	client = spawn(fun() -> client:client_setup(Server, Server) end),
+	Streamer = spawn(fun() -> group:create() end ),
 
-	%Server ! { setup },
-	%Intermidiate ! {setup, [Server, Client]}, 
-	%Client ! {setup, [Server, Intermidiate]} ,
+    connect_clients(Streamer, 8),
 
-	%stream(Server, "Hello", 0),
+    timer:sleep(2000),
+
+    stream(Streamer, "He"),
 
 	ok.
 
-stream(_, [], _) -> ok;
-stream(Node, [ H | T], N) -> 
+stream(_, []) -> ok;
+stream(Node, [ H | T]) -> 
     Node ! { packet, #message {
         data = H,
         sender = self(),
-        timestamp = N,
+        timestamp = 0,
         stream = 0
     }},
-    stream(Node, T, N + 1).
+    stream(Node, T).
 
 
 
-bootstrap_clients(0, Clients) -> Clients;
-bootstrap_clients(N, Clients) ->
+connect_clients(_, 0) -> ok;
+connect_clients(Streamer, N) ->
+    spawn(fun() -> group:join(Streamer) end),
+    connect_clients(Streamer, N - 1).
 
-    Client = spawn(fun() -> client:handle() end),
-    bootstrap_clients(N - 1, Clients ++ [Client]).

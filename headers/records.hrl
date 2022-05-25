@@ -1,6 +1,6 @@
 % Message type that is sent between nodes
 -record(message, {
-	data :: byte(),
+	data :: any(),
     sender :: pid(),
     timestamp :: integer(),
     stream :: integer()
@@ -10,6 +10,7 @@
 -record(state, {
 	source :: pid(), %Streamer
     data :: [], %Buffer
+	timestamp :: 0,
 	parent :: pid(),
 	children :: [pid()],
 	capacity :: 5
