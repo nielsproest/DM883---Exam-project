@@ -5,19 +5,19 @@
 
 -import_all(helpers).
 -import_all(server).
--import_all(client).
+-import_all(node3).
 
 start() ->
 
-	Server = spawn(fun() -> client:server_setup() end),
-	Intermidiate = spawn(fun() -> client:client_setup(Server, Server) end),
-	client = spawn(fun() -> client:client_setup(Server, Server) end),
+	Server = spawn(fun() -> node3:server_setup() end),
+	Intermidiate = spawn(fun() -> node3:client_setup(Server, Server) end),
+	Client = spawn(fun() -> node3:client_setup(Server, Server) end),
 
 	%Server ! { setup },
 	%Intermidiate ! {setup, [Server, Client]}, 
 	%Client ! {setup, [Server, Intermidiate]} ,
 
-	%stream(Server, "Hello", 0),
+	stream(Server, "Hello", 0),
 
 	ok.
 

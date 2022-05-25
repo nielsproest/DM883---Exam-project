@@ -10,6 +10,7 @@
 -record(state, {
 	source :: pid(), %Streamer
     data :: [], %Buffer
+	timestamp :: 0,
 	parent :: pid(),
 	children :: [pid()],
 	capacity :: 5
