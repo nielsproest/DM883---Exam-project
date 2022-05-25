@@ -42,7 +42,7 @@ attempt_to_join(S, Pid) ->
 	end.
 
 accept_join(S, Pid) -> 
-	Pid ! { join_ok },
+	Pid ! { join_ok, S},
 	S#state {
 		children = S#state.children ++ [Pid]
 	}.
