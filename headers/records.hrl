@@ -8,6 +8,9 @@
 
 % State kept within each node.
 -record(state, {
-	neighbours :: [],
-    timestamp :: integer()
+	source :: pid(), %Streamer
+    data :: [], %Buffer
+	parent :: pid(),
+	children :: [pid()],
+	capacity :: 5
 }).
