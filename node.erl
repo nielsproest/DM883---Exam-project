@@ -7,6 +7,7 @@
 
 -import_all(rand).
 -import_all(lists).
+-import_all(join).
 
 
 
@@ -15,9 +16,11 @@ run(S, Callback) ->
     receive 
 		{ join, ClientPid } -> 
 
-			run(
-				attempt_to_join(S, ClientPid), Callback
-			);
+			NewState = join:attempt(
+				S, ClientPid
+			),
+
+			run(NewState, Callback);
 
         { packet, Data } ->
             
@@ -25,40 +28,10 @@ run(S, Callback) ->
             Callback(Data#message.data),
 
             % Distribute to some neighbours
-            distribute(
+            communication:multicast(
                 S#state.children, Data
             ),
 
             % Listen for next message and increment timestamp
             run(S, Callback)
     end.
-
-attempt_to_join(S, Pid) ->
-	case length(S#state.children) =< S#state.capacity  of
-		true -> 
-			accept_join(S, Pid);
-		false -> 
-			refuse_join(S, Pid)
-	end.
-
-accept_join(S, Pid) -> 
-	Pid ! { join_ok, S},
-	S#state {
-		children = S#state.children ++ [Pid]
-	}.
-
-refuse_join(S, Pid) ->
-	Pid ! { join_refuse, lists:nth(rand:uniform(length(S#state.children)), S#state.children) },
-	S.
-
-
-distribute([], _) -> ok;
-distribute([H | T], Data) ->
-
-    Msg = Data#message {
-        sender = self()
-    },
-
-    H ! { packet, Msg },
-
-	distribute(T, Msg).
