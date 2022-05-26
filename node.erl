@@ -2,7 +2,7 @@
 
 -include_lib("headers/records.hrl").
 
--export([run/1]).
+-export([run/2]).
 
 
 -import_all(rand).
@@ -11,18 +11,18 @@
 
 
 % Running nodes continously wait for new packets to handle.
-run(S) ->
+run(S, Callback) ->
     receive 
 		{ join, ClientPid } -> 
 
 			run(
-				attempt_to_join(S, ClientPid)
+				attempt_to_join(S, ClientPid), Callback
 			);
 
         { packet, Data } ->
             
             % Internal processing
-            io:format("~p received ~c\n", [self(), Data#message.data]),
+            Callback(Data#message.data),
 
             % Distribute to some neighbours
             distribute(
@@ -30,7 +30,7 @@ run(S) ->
             ),
 
             % Listen for next message and increment timestamp
-            run(S)
+            run(S, Callback)
     end.
 
 attempt_to_join(S, Pid) ->

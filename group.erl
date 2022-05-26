@@ -4,7 +4,7 @@
 
 -import_all(node).
 
--export([create/0, create/1, join/1, stream/2]).
+-export([create/0, create/1, join/1, join/2, stream/2]).
 
 create() -> create(2).
 create(Capacity) ->
@@ -16,13 +16,10 @@ create(Capacity) ->
         capacity = Capacity
     },
 
-    node:run(S).
+    node:run( S, fun( _Data ) -> ok end ).
 
-join(Streamer, Current) ->
+join(Streamer, Current, Callback) ->
     Current ! { join, self() },
-
-
-
 	receive
 		{ join_ok, ParentState } -> 
             S = #state {
@@ -32,12 +29,13 @@ join(Streamer, Current) ->
                 children = [],
                 capacity = ParentState#state.capacity
             },
-            node:run(S);
-		{ join_refuse, NewCurrent } -> join(Streamer, NewCurrent)
+            node:run(S, Callback);
+		{ join_refuse, NewCurrent } -> join(Streamer, NewCurrent, Callback)
 	end.
 
-join(Streamer) -> join(Streamer, Streamer).
 
+join(Streamer, Callback) -> join(Streamer, Streamer, Callback).
+join(Streamer) -> join(Streamer, fun(_Data) -> ok end).
 
 stream(_, []) -> ok;
 stream(Streamer, [ H | T]) -> 

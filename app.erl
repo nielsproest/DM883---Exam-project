@@ -7,11 +7,16 @@ start() ->
 
 	Streamer = spawn(fun() -> group:create(10) end ),
 
-    connect_clients(Streamer, 8),
+    connect_clients(Streamer, 200),
 
-    timer:sleep(2000),
+    spawn(fun() -> group:join(Streamer, fun(Data) -> 
+            io:format("~p received ~c\n", [self(), Data]) 
+        end )   
+    end ),
 
-    group:stream(Streamer, "He"),
+    timer:sleep(1000),
+
+    group:stream(Streamer, "Never gonna give you up..."),
 
 	ok.
 
