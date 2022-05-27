@@ -5,25 +5,37 @@
 
 start() ->
 
-	Streamer = spawn(fun() -> group:create(10) end ),
+	Streamer = spawn(fun() -> group:create(1) end ),
 
-    connect_clients(Streamer, 200),
+    Clients = connect_clients(Streamer, 1, []),
+
+    io:format("Clients: ~p \n", [Clients]),
 
     spawn(fun() -> group:join(Streamer, fun(Data) -> 
-            io:format("~p received ~c\n", [self(), Data]) 
+            io:format("~p received ~p\n", [self(), Data]) 
         end )   
     end ),
 
-    timer:sleep(1000),
+    P = lists:nth(rand:uniform(length(Clients)), Clients),
 
-    group:stream(Streamer, "Never gonna give you up..."),
+    {ok, File} = file:read_file("data.txt"),
 
-	ok.
+    Content = unicode:characters_to_list(File),
 
+    group:stream(Streamer, string:tokens("Hej med dig", [$\s, $\r, $\n])),
+
+    io:format("kill: ~p\n", [P]),
+    exit(P, kill),
+
+    %group:stream(Streamer, string:tokens(Content, [$\s, $\r, $\n], Clients)),
+    % 
+    group:stream(Streamer, string:tokens("jeg hedder kaj dette er en lang besked wtf hahe hs hs hdh sdd", [$\s, $\r, $\n])),
+
+    ok.
 
 % Connect an abitrary number of clients to a given group streamer
-connect_clients(_, 0) -> ok;
-connect_clients(Streamer, N) ->
-    spawn(fun() -> group:join(Streamer) end),
-    connect_clients(Streamer, N - 1).
+connect_clients(_, 0, Pids) -> Pids;
+connect_clients(Streamer, N, Pids) ->
+    Pid = spawn(fun() -> group:join(Streamer) end),
+    connect_clients(Streamer, N - 1, [ Pid | Pids]).
 

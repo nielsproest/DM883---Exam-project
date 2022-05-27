@@ -13,5 +13,6 @@
 	timestamp :: 0,
 	parent :: pid(),
 	children :: [pid()],
-	capacity :: 5
+	capacity :: 5,
+	buffer :: pid()
 }).
