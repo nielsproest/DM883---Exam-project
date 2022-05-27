@@ -11,7 +11,7 @@
 	source :: pid(), %Streamer
 	timestamp :: integer(),
 	neighbours :: [pid()],
-	distribution :: [integer()],
+	backflow :: [],
 	nodes :: [pid()],
 	capacity :: integer()
 }).

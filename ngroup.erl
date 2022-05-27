@@ -1,12 +1,13 @@
--module(group).
+-module(ngroup).
 
 -include_lib("headers/records.hrl").
 
 -import_all(node).
 -import_all(lists).
 -import_all(rand).
+-import_all(utility).
 
--export([create/0, create/1, join/2, join/3, join_ok/3, stream/2]).
+-export([create/0, create/1, join/2, join/3, stream/2]).
 
 % Create server
 create() -> create(3).
@@ -14,7 +15,7 @@ create(Capacity) ->
     S = #state{
         source = self(),
 		timestamp = 0,
-		distribution = [],
+		backflow = [],
         neighbours = [],
 		nodes = [self()],
         capacity = Capacity
@@ -24,36 +25,21 @@ create(Capacity) ->
 
 % Create client and ask to join
 join(Streamer, Callback, Capacity) ->
-    Streamer ! { setup, self() },
+	Streamer ! { setup, self(), Capacity },
 	receive
-		{ current_state, Timestamp, Nodes } -> 
-
-            S = #state {
-                source = Streamer,
+		{ current_state, Timestamp, Neighbours } -> 
+			S = #state {
+				source = Streamer,
 				timestamp = Timestamp,
-				distribution = [],
-                neighbours = [],
-				nodes = Nodes
-            },
-
-            node:run(S, Callback, 0)
+				backflow = [],
+                neighbours = Neighbours,
+				capacity = Capacity,
+				nodes = []
+			},
+			utility:send_msg(Neighbours, { join_new, self() }),
+			node:run(S, Callback, 1500)
 	end.
-
 join(Streamer, Callback) -> join(Streamer, Callback, 2).
-
-% Server responds to client that wants to join
-join_ok(S, Node, Capacity) ->
-	Node ! { join_ok, S#state.timestamp, S#state.nodes },
-	S#state {
-		nodes = S#state.nodes ++ [Node]
-	}.
-
-n_random(N, List) -> n_random(N, [], List).
-n_random(0, Out, _) ->
-	lists:usort(Out);
-n_random(N, Out, List) ->
-	Random_client = lists:nth(rand:uniform(length(List)), List),
-	n_random(N-1, Out ++ [Random_client], List).
 
 
 

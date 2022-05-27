@@ -2,17 +2,10 @@
 
 -include_lib("headers/records.hrl").
 
--export([multicast/3]).
+-export([multicast/2]).
 
-multicast(Neighbours, Data, Distribution) ->
-
-    Timestamp = Data#message.timestamp,
-
-    case lists:member(Timestamp, Distribution) of
-        true -> Distribution;
-        false -> send(Neighbours, Data), Distribution ++ [Timestamp]
-    end.
-    
+multicast(Neighbours, Data) ->
+	send(Neighbours, Data).
 
 send([], _) -> ok;
 send([H | T], Data) ->
