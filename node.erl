@@ -38,9 +38,9 @@ loop(S, Callback, Timeout) ->
             Callback(Data#message.data),
 
 			spawn_link( fun() ->  
-					
+
 					communication:multicast(
-						S#state.neighbours, Data
+						S#state.neighbours, Data, S#state.distribution
 					)
 				end
 			),
