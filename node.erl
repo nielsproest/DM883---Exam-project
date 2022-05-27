@@ -9,20 +9,11 @@
 -import_all(lists).
 -import_all(network).
 -import_all(communication).
--import_all(buffer).
-
 
 
 % Running nodes continously wait for new packets to handle.
 run(S, Callback, Wait) ->
-
-	Buffer = spawn_link( fun() -> buffer:run([]) end),
-
-	NewState = S#state {
-		buffer = Buffer
-	},
-
-	loop(NewState, Callback, Wait).
+	loop(S, Callback, Wait).
 
 run(S, Wait) ->
 	run(S, fun() -> ok end, Wait).
@@ -47,9 +38,9 @@ loop(S, Callback, Timeout) ->
             Callback(Data#message.data),
 
 			spawn_link( fun() ->  
-					timer:sleep(2500),
+					
 					communication:multicast(
-						S#state.children, Data
+						S#state.neighbours, Data
 					)
 				end
 			),

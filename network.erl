@@ -5,7 +5,7 @@
 -export([join/2]).
 
 join(S, Pid) ->
-	case length(S#state.children) =< S#state.capacity  of
+	case length(S#state.neighbours) =< S#state.capacity  of
 		true -> 
 			accept(S, Pid);
 		false -> 
@@ -15,9 +15,9 @@ join(S, Pid) ->
 accept(S, Pid) -> 
 	Pid ! { join_ok, S},
 	S#state {
-		children = S#state.children ++ [Pid]
+		neighbours = S#state.neighbours ++ [Pid]
 	}.
 
 refuse(S, Pid) ->
-	Pid ! { join_refuse, lists:nth(rand:uniform(length(S#state.children)), S#state.children) },
+	Pid ! { join_refuse, lists:nth(rand:uniform(length(S#state.neighbours)), S#state.neighbours) },
 	S.

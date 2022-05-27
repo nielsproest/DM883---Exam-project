@@ -10,9 +10,7 @@ create() -> create(2).
 create(Capacity) ->
     S = #state{
         source = self(),
-        data = [],
-        parent = ok,
-        children = [],
+        neighbours = [],
         capacity = Capacity
     },
 
@@ -24,9 +22,7 @@ join(Streamer, Current, Callback, Depth) ->
 		{ join_ok, ParentState } -> 
             S = #state {
                 source = Streamer,
-                data = [],
-                parent = Current,
-                children = [],
+                neighbours = [],
                 capacity = ParentState#state.capacity
             },
             node:run(S, Callback, 3000 * Depth);
