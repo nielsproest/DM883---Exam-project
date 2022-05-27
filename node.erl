@@ -2,7 +2,7 @@
 
 -include_lib("headers/records.hrl").
 
--export([run/1, run/2, run/3]).
+-export([run/3]).
 
 
 -import_all(rand).
@@ -15,42 +15,51 @@
 run(S, Callback, Wait) ->
 	loop(S, Callback, Wait).
 
-run(S, Wait) ->
-	run(S, fun() -> ok end, Wait).
-
-run(S) ->
-	run(S, fun() -> ok end, 0).
-
 
 loop(S, Callback, Timeout) ->
     receive 
-		{ join_ask, ClientPid, Capacity } when S#state.source == self() -> 
+		{ setup, ClientPid } when S#state.source == self() -> 
+			ClientPid ! { current_state, S#state.timestamp, S#state.nodes },
+			NewState = S#state {
+				nodes = S#state.nodes ++ [ClientPid]
+			},
 
-			NewState = group:join_ok(
-				S, ClientPid, Capacity
-			),
+			loop(NewState, Callback, Timeout);
+
+		{ join, Pid } ->
+			NewState = S#state {
+				nodes = S#state.nodes ++ [Pid],
+				neighbours = S#state.neighbours ++ [Pid]
+			},
 
 			loop(NewState, Callback, Timeout);
 
         { packet, Data } ->
             
+
             % Internal processing
-            Callback(Data#message.data),
+			Timestamp = case (S#state.timestamp < Data#message.timestamp) of
+				true -> Callback(Data#message.data), Data#message.timestamp;
+				false -> S#state.timestamp
+			end,
 
-			spawn_link( fun() ->  
-
-					communication:multicast(
-						S#state.neighbours, Data, S#state.distribution
-					)
-				end
+			Distribution = communication:multicast(
+				S#state.neighbours, Data, S#state.distribution
 			),
 
+			NewState = S#state {
+				distribution = Distribution,
+				timestamp = Timestamp
+			},
 
             % Listen for next message and increment timestamp
-            loop(S, Callback, 1500)
-	after Timeout -> reconnect(), ok
+            loop(NewState, Callback, 1500)
+	after 1500 -> reconnect(S#state.nodes), loop(S, Callback, 0), ok
 
     end.
 
 
-reconnect() -> io:format("Reconnect.").
+reconnect(Nodes) -> 
+	io:format("Reconnect... \n"),
+	RandomPid = lists:nth(rand:uniform(length(Nodes)), Nodes),
+	RandomPid ! { join, self() }.

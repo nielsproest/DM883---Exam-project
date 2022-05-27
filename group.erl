@@ -16,27 +16,30 @@ create(Capacity) ->
 		timestamp = 0,
 		distribution = [],
         neighbours = [],
-		nodes = [],
+		nodes = [self()],
         capacity = Capacity
     },
 
-    node:run(S, fun( _Data ) -> ok end).
+    node:run(S, fun( _Data ) -> ok end, 1000).
 
 % Create client and ask to join
 join(Streamer, Callback, Capacity) ->
-    Streamer ! { join_ask, self(), Capacity },
+    Streamer ! { setup, self() },
 	receive
-		{ join_ok, Timestamp, Nodes } -> 
+		{ current_state, Timestamp, Nodes } -> 
+
             S = #state {
                 source = Streamer,
 				timestamp = Timestamp,
 				distribution = [],
-                neighbours = n_random(Capacity, Nodes),
-				nodes = Nodes,
-                capacity = Capacity
+                neighbours = [],
+				nodes = Nodes
             },
-            node:run(S, Callback)
+
+            node:run(S, Callback, 0)
 	end.
+
+join(Streamer, Callback) -> join(Streamer, Callback, 2).
 
 % Server responds to client that wants to join
 join_ok(S, Node, Capacity) ->
@@ -52,16 +55,18 @@ n_random(N, Out, List) ->
 	Random_client = lists:nth(rand:uniform(length(List)), List),
 	n_random(N-1, Out ++ [Random_client], List).
 
-join(Streamer, Callback) -> join(Streamer, Callback, 2).
 
-stream(_, []) -> ok;
-stream(Streamer, [ H | T]) -> 
+
+stream(_, [], _) -> ok;
+stream(Streamer, [ H | T], N) -> 
     
     Streamer ! { packet, #message {
         data = H,
         sender = self(),
-        timestamp = 0,
+        timestamp = N,
         stream = 0
     }},
-    timer:sleep(1000),
-    stream(Streamer, T).
+    timer:sleep(100),
+    stream(Streamer, T, N + 1).
+
+stream(Streamer, Data) -> stream(Streamer, Data, 1). 
