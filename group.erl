@@ -3,35 +3,56 @@
 -include_lib("headers/records.hrl").
 
 -import_all(node).
+-import_all(lists).
+-import_all(rand).
 
--export([create/0, create/1, join/1, join/2, stream/2]).
+-export([create/0, create/1, join/2, join/3, join_ok/3, stream/2]).
 
-create() -> create(2).
+% Create server
+create() -> create(3).
 create(Capacity) ->
     S = #state{
         source = self(),
+		timestamp = 0,
+		distribution = [],
         neighbours = [],
+		nodes = [],
         capacity = Capacity
     },
 
-    node:run( S, fun( _Data ) -> ok end, 1000).
+    node:run(S, fun( _Data ) -> ok end).
 
-join(Streamer, Current, Callback, Depth) ->
-    Current ! { join, self() },
+% Create client and ask to join
+join(Streamer, Callback, Capacity) ->
+    Streamer ! { join_ask, self(), Capacity },
 	receive
-		{ join_ok, ParentState } -> 
+		{ join_ok, Timestamp, Nodes } -> 
             S = #state {
                 source = Streamer,
-                neighbours = [],
-                capacity = ParentState#state.capacity
+				timestamp = Timestamp,
+				distribution = [],
+                neighbours = n_random(Capacity, Nodes),
+				nodes = Nodes,
+                capacity = Capacity
             },
-            node:run(S, Callback, 3000 * Depth);
-		{ join_refuse, NewCurrent } -> join(Streamer, NewCurrent, Callback, Depth + 1)
+            node:run(S, Callback)
 	end.
 
-join(Streamer, Callback, Depth) -> join(Streamer, Streamer, Callback, Depth).
-join(Streamer, Callback) -> join(Streamer, Streamer, Callback, 1).
-join(Streamer) -> join(Streamer, fun(_Data) -> ok end, 1).
+% Server responds to client that wants to join
+join_ok(S, Node, Capacity) ->
+	Node ! { join_ok, S#state.timestamp, S#state.nodes },
+	S#state {
+		nodes = S#state.nodes ++ [Node]
+	}.
+
+n_random(N, List) -> n_random(N, [], List).
+n_random(0, Out, _) ->
+	lists:usort(Out);
+n_random(N, Out, List) ->
+	Random_client = lists:nth(rand:uniform(length(List)), List),
+	n_random(N-1, Out ++ [Random_client], List).
+
+join(Streamer, Callback) -> join(Streamer, Callback, 2).
 
 stream(_, []) -> ok;
 stream(Streamer, [ H | T]) -> 

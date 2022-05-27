@@ -24,10 +24,10 @@ run(S) ->
 
 loop(S, Callback, Timeout) ->
     receive 
-		{ join, ClientPid } -> 
+		{ join_ask, ClientPid, Capacity } when S#state.source == self() -> 
 
-			NewState = network:join(
-				S, ClientPid
+			NewState = group:join_ok(
+				S, ClientPid, Capacity
 			),
 
 			loop(NewState, Callback, Timeout);
