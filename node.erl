@@ -16,11 +16,19 @@ run(S, Callback, Wait) ->
 	loop(S, Callback, Wait).
 
 loop(_S, Callback, Timeout) ->
-	case rand:uniform() < 0.05 of % 10%
+	% Pings neighbours 5% of the time
+	case rand:uniform() < 0.05 of
 		true -> 
-			S = disconnect(_S);
+			__S = reconnect(disconnect(_S));
 		false -> 
-			S = _S
+			__S = _S
+	end,
+	% Server supplies node list 5% of the time
+	case rand:uniform() < 0.05 of
+		true -> 
+			S = server_supply(__S);
+		false -> 
+			S = __S
 	end,
 
 	receive 
@@ -33,8 +41,8 @@ loop(_S, Callback, Timeout) ->
 
 		% Server receives new node
 		% Server sends said node a timestamp and capacity
-		{ setup, ClientPid, Capacity } when S#state.source == self() -> 
-			ClientPid ! { current_state, S#state.timestamp, utility:n_random(Capacity, S#state.nodes) },
+		{ setup, ClientPid } when S#state.source == self() -> 
+			ClientPid ! { current_state, S },
 
 			NewState = S#state {
 				nodes = S#state.nodes ++ [ClientPid]
@@ -42,91 +50,111 @@ loop(_S, Callback, Timeout) ->
 
 			loop(NewState, Callback, Timeout);
 
-		% Server sends new neighbours to client
-		{ supply_neighbours, ClientPid, Capacity } when S#state.source == self() ->
-			ClientPid ! { receive_neighbours, utility:n_random(Capacity, S#state.nodes) },
-			loop(S, Callback, Timeout);
-
-		% Client receives new neighbours from server
-		{ receive_neighbours, ClientPids } ->
+		% Client receives node list
+		{ supply_nodes, Nodes, Version } when Version > S#state.version ->
 			NewState = S#state {
-				% Filter by unique
-				neighbours = lists:usort(S#state.neighbours ++ ClientPids)
+				nodes = Nodes,
+				neighbours = lists:filter(fun(X) -> lists:member(X, Nodes) end, S#state.neighbours),
+				version = Version
 			},
+			utility:send_msg(S#state.neighbours, {supply_nodes, Nodes, Version}),
+
 			loop(NewState, Callback, Timeout);
 
 		% Adds neighbours to node
-		{ join_new, ClientPid } ->
+		{ join_new, ClientPid } when length(S#state.neighbours) =< S#state.capacity ->
 			NewState = S#state {
 				neighbours = lists:usort(S#state.neighbours ++ [ClientPid] )
 			},
 
 			loop(NewState, Callback, Timeout);
 
+		{ join_new, ClientPid } ->
+			ClientPid ! { join_refuse, self() },
+			loop(S, Callback, Timeout);
+
+		% Client refused to join
+		{ join_refuse, ClientPid } ->
+			NewState = S#state {
+				neighbours = lists:filter(fun(X) -> X /= ClientPid end, S#state.neighbours)
+			},
+			loop(NewState, Callback, Timeout);
+
 		% Receives data
 		{ packet, Data } when length(S#state.backflow) > 10 ->
-			Times = backflow_add(S#state.backflow,Data),
-			[Callback(X#message.data) || X <- Times],
-			Last = utility:lists_last(Times),
+			PrevState = backflow_add(S,Data,Callback),
+			[Callback(X#message.data) 
+				|| X <- PrevState#state.backflow],
+			[communication:multicast(_S#state.neighbours, X) 
+				|| X <- PrevState#state.backflow],
 
-			NewState = S#state {
+			NewState = PrevState#state {
 				backflow = [],
-				timestamp = Last#message.timestamp
+				timestamp = Data#message.timestamp
 			},
             loop(NewState, Callback, Timeout);
 
-		{ packet, Data } when Data#message.timestamp > (S#state.timestamp + 1) ->
-			NewState = S#state {
-				backflow = backflow_add(S#state.backflow,Data)
-			},
-
-            loop(NewState, Callback, Timeout);
 		{ packet, Data } when Data#message.timestamp > S#state.timestamp ->
 			% Internal processing
-			Times = backflow_add(S#state.backflow,Data),
-			[Callback(X#message.data) || X <- Times],
-			Last = utility:lists_last(Times),
-
-			communication:multicast(
-				S#state.neighbours, Data
-			),
-
-			NewState = S#state {
-				backflow = [],
-				timestamp = Last#message.timestamp
-			},
+			NewState = backflow_add(S,Data,Callback),
 
             % Listen for next message and increment timestamp
             loop(NewState, Callback, Timeout)
-	after Timeout -> loop(reconnect(S), Callback, Timeout)
+	after Timeout -> loop(S, Callback, Timeout)
 
     end.
 
-backflow_add(Records, Data) ->
-	_Records = Records ++ [Data],
-	IDS = lists:usort([X#message.timestamp || X <- _Records]),
-	[utility:lists_first([Y || Y <- _Records, Y#message.timestamp == X]) || X <- IDS].
-
-disconnect_aux(_,_, false) -> false;
-disconnect_aux(S, X, true) ->
-	S#state.source ! { node_dead, X },
-	true.
-disconnect(S) ->
-	NewState = S#state{
-		neighbours = lists:filter(fun(X) -> disconnect_aux(S, X, is_process_alive(X)) end, S#state.neighbours)
+% Server supply's new node list
+server_supply(S) when S#state.source == self() ->
+	NewState = S#state {
+		version = S#state.version + 1
 	},
-	if 
-		length(S#state.neighbours) > S#state.capacity ->
-			ok;
-		length(NewState#state.neighbours) /= S#state.neighbours -> 
-			S#state.source ! { supply_neighbours, self(), S#state.capacity - length(S#state.neighbours) };
-		true -> 
-			ok
-	end,
-	NewState.
+	utility:send_msg(S#state.neighbours, { supply_nodes, NewState#state.nodes, NewState#state.version }),
+	NewState;
+server_supply(S) -> S.
 
+% Handles "backflows" (missing messages)
+backflow_process(S, [H | T], C, A, B) when B-A == 1 ->
+	% Send message along
+	communication:multicast(
+		S#state.neighbours, H
+	),
+	C(H#message.data),
+	% Update timestamp
+	NewState = S#state {
+		timestamp = H#message.timestamp
+	},
+	backflow_process(NewState,T,C,A,H#message.timestamp);
+backflow_process(S, T, _, _, _) ->
+	S#state {
+		backflow = T
+	}.
+backflow_add(S, Data, C) ->
+	% Current records
+	_Records = S#state.backflow ++ [Data],
+	% Their timestamps, sorted
+	IDS = lists:usort([X#message.timestamp || X <- _Records]),
+	% Records, sorted
+	Datas = [utility:lists_first([Y || Y <- _Records, Y#message.timestamp == X]) || X <- IDS],
+	First = utility:lists_first(Datas),
+	backflow_process(S, Datas, C, S#state.timestamp, First#message.timestamp).
+
+% Pings neighbours
+disconnect_aux(S, X, false) ->
+	S#state.source ! { node_dead, X },
+	false;
+disconnect_aux(_,_, true) -> true.
+disconnect(S) ->
+	S#state{
+		neighbours = lists:filter(fun(X) -> disconnect_aux(S, X, is_process_alive(X)) end, S#state.neighbours)
+	}.
+
+% Reconnect missing nodes
 reconnect(S) when length(S#state.neighbours) < S#state.capacity -> 
 	io:format("Reconnect... \n"),
-	self() ! { join_refuse, self() },
-	S;
+	
+	Missing = S#state.capacity - length(S#state.neighbours),
+	S#state {
+		neighbours = lists:usort(S#state.neighbours ++ utility:n_random(Missing, S#state.nodes))
+	};
 reconnect(S) -> S.

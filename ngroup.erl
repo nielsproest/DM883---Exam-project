@@ -15,6 +15,7 @@ create(Capacity) ->
     S = #state{
         source = self(),
 		timestamp = 0,
+		version = 0,
 		backflow = [],
         neighbours = [],
 		nodes = [self()],
@@ -25,21 +26,22 @@ create(Capacity) ->
 
 % Create client and ask to join
 join(Streamer, Callback, Capacity) ->
-	Streamer ! { setup, self(), Capacity },
+	Streamer ! { setup, self() },
 	receive
-		{ current_state, Timestamp, Neighbours } -> 
+		{ current_state, Server_S } -> 
 			S = #state {
 				source = Streamer,
-				timestamp = Timestamp,
+				timestamp = Server_S#state.timestamp,
 				backflow = [],
-                neighbours = Neighbours,
+				version = Server_S#state.version,
+                neighbours = utility:n_random(Capacity, Server_S#state.nodes),
 				capacity = Capacity,
-				nodes = []
+				nodes = Server_S#state.nodes
 			},
-			utility:send_msg(Neighbours, { join_new, self() }),
+			utility:send_msg(S#state.neighbours, { join_new, self() }),
 			node:run(S, Callback, 1500)
 	end.
-join(Streamer, Callback) -> join(Streamer, Callback, 2).
+join(Streamer, Callback) -> join(Streamer, Callback, 4).
 
 
 

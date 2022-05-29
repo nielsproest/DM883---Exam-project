@@ -10,6 +10,7 @@
 -record(state, {
 	source :: pid(), %Streamer
 	timestamp :: integer(),
+	version :: integer(),
 	neighbours :: [pid()],
 	backflow :: [],
 	nodes :: [pid()],
