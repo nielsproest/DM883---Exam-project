@@ -154,7 +154,10 @@ reconnect(S) when length(S#state.neighbours) < S#state.capacity ->
 	io:format("Reconnect... \n"),
 	
 	Missing = S#state.capacity - length(S#state.neighbours),
-	S#state {
+	NewNeighbours = utility:n_random(Missing, S#state.nodes),
+	NewState = S#state {
 		neighbours = lists:usort(S#state.neighbours ++ utility:n_random(Missing, S#state.nodes))
-	};
+	},
+	utility:send_msg(NewNeighbours, { join_new, self() }),
+	NewState;
 reconnect(S) -> S.
