@@ -1,4 +1,4 @@
--module(ngroup).
+-module(group).
 
 -include_lib("headers/records.hrl").
 
@@ -12,17 +12,19 @@
 % Create server
 create() -> create(3).
 create(Capacity) ->
+	Coordinator = spawn_link( fun() -> coordinator:handle(self(), [self()], 0) end),
     S = #state{
-        source = self(),
+        source = Coordinator,
 		timestamp = 0,
 		version = 0,
 		backflow = [],
         neighbours = [],
 		nodes = [self()],
-        capacity = Capacity
+        capacity = Capacity,
+		max_capacity = Capacity + 2
     },
 
-    node:run(S, fun( _Data ) -> ok end, 1000).
+    node:run(S, fun( _Data ) -> ok end).
 
 % Create client and ask to join
 join(Streamer, Callback, Capacity) ->
@@ -30,16 +32,22 @@ join(Streamer, Callback, Capacity) ->
 	receive
 		{ current_state, Server_S } -> 
 			S = #state {
-				source = Streamer,
+				source = Server_S#state.source,
 				timestamp = Server_S#state.timestamp,
 				backflow = [],
 				version = Server_S#state.version,
                 neighbours = utility:n_random(Capacity, Server_S#state.nodes),
 				capacity = Capacity,
+				max_capacity = Capacity + 2,
 				nodes = Server_S#state.nodes
 			},
+
+			% Request neighbours to stream to them
 			utility:send_msg(S#state.neighbours, { join_new, self() }),
-			node:run(S, Callback, 1500)
+
+			io:format("print: ~p \n ", [S#state.neighbours]),
+
+			node:run(S, Callback)
 	end.
 join(Streamer, Callback) -> join(Streamer, Callback, 5).
 

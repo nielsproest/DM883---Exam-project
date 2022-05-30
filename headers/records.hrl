@@ -14,5 +14,6 @@
 	neighbours :: [pid()],
 	backflow :: [],
 	nodes :: [pid()],
-	capacity :: integer()
+	capacity :: integer(),
+	max_capacity :: integer()
 }).
