@@ -150,10 +150,10 @@ disconnect(S) ->
 	}.
 
 % Reconnect missing nodes
-reconnect(S) when length(S#state.neighbours) < S#state.capacity -> 
+reconnect(S) when length(S#state.neighbours) < S#state.capacity-2 -> 
 	io:format("Reconnect... \n"),
 	
-	Missing = S#state.capacity - length(S#state.neighbours),
+	Missing = S#state.capacity-2 - length(S#state.neighbours),
 	NewNeighbours = utility:n_random(Missing, S#state.nodes),
 	NewState = S#state {
 		neighbours = lists:usort(S#state.neighbours ++ utility:n_random(Missing, S#state.nodes))

@@ -41,7 +41,7 @@ join(Streamer, Callback, Capacity) ->
 			utility:send_msg(S#state.neighbours, { join_new, self() }),
 			node:run(S, Callback, 1500)
 	end.
-join(Streamer, Callback) -> join(Streamer, Callback, 4).
+join(Streamer, Callback) -> join(Streamer, Callback, 5).
 
 
 
