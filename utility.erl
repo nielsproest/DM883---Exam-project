@@ -1,6 +1,6 @@
 -module(utility).
 
--export([send_msg/2, n_random/2, lists_first/1, lists_last/1]).
+-export([send_msg/2, n_random/2, lists_first/1, lists_last/1, n_exclude/2]).
 
 
 lists_first([]) -> ok;
@@ -18,6 +18,13 @@ send_msg([H | T], Msg) ->
     H ! Msg,
     send_msg(T, Msg).
 
+n_exclude(HT,X) -> n_exclude(HT,[],X).
+n_exclude([],L,_) ->
+	L;
+n_exclude([H | T], L, X) when H == X ->
+	n_exclude(T, L, X);
+n_exclude([H | T], L, X) ->
+	n_exclude(T, L ++ [H], X).
 
 n_random(N, List) -> n_random(N, [], List).
 n_random(0, Out, _) ->
