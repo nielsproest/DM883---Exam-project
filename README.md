@@ -17,3 +17,10 @@ app:start().
 ## To test the program, run the following functions:
 ....
 The output will be printed out in the terminal. 
+````
+erl -make
+erl -pa .\bin\
+test:test().
+````
+This runs multiple tests, some of which are expected to fail.
+This include one to many, many to many, kill test etc.
