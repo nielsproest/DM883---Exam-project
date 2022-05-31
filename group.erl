@@ -19,7 +19,7 @@ create(Capacity) ->
 		version = #{1 => 0},
 		backflow = #{1 => []},
         neighbours = #{1 => []},
-		nodes = #{1 => self()},
+		nodes = #{1 => [self()]},
         capacity = Capacity,
 		max_capacity = Capacity + 2
     },

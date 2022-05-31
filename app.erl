@@ -6,14 +6,14 @@
 start() ->
 	Streamer = spawn(fun() -> group:create(1) end),
 
-    Clients = connect_clients(Streamer, 50, []),
+    %Clients = connect_clients(Streamer, 1, []),
 
     %io:format("Clients: ~p \n", [Clients]),
 
-    spawn(fun() -> group:join(Streamer, fun(Data) -> 
-            io:format("~p received ~p\n", [self(), Data]) 
-        end )   
-    end ),
+   % spawn(fun() -> group:join(Streamer, fun(Data) -> 
+   %         io:format("~p received ~p\n", [self(), Data]) 
+   %     end )   
+   % end ),
 
     timer:sleep(3000),
 
