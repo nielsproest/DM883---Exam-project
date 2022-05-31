@@ -4,16 +4,19 @@
 -import_all(group).
 
 start() ->
-	Streamer = spawn(fun() -> ngroup:create() end),
+	First = spawn(fun() -> ngroup:create(1) end),
+    Second = spawn(fun() -> ngroup:create(2) end),
 
-    %Clients = connect_clients(Streamer, 1, []),
+    connect_clients([ { First, 1 }, { Second, 2 }], 10, []),
+    connect_clients([ { Second, 2 }], 5, []),
+    connect_clients([ { First, 1 }], 5, []),
 
     %io:format("Clients: ~p \n", [Clients]),
 
-   %spawn(fun() -> ngroup:join(Streamer, fun(Data) -> 
-    %        io:format("~p received ~p\n", [self(), Data]) 
-    %    end )   
-   % end ),
+    spawn(fun() -> ngroup:join([ { First, 1 }, { Second, 2}], fun(Data, StreamId) -> 
+            io:format("~p received ~p\n", [StreamId, Data]) 
+        end )   
+    end ),
 
     timer:sleep(3000),
 
@@ -22,13 +25,15 @@ start() ->
     Content = unicode:characters_to_list(File),
 
     % 
-    ngroup:stream(Streamer, string:tokens("a b c d e f g h i j k l m n o p q r s t u v x y z æ ø å", [$\s, $\r, $\n])),
+    spawn(fun() ->  ngroup:stream(First, 1, string:tokens("a b c d ", [$\s, $\r, $\n])) end),
+    spawn(fun() ->  ngroup:stream(Second, 2, string:tokens("e f g h ", [$\s, $\r, $\n])) end),
+
 
     ok.
 
 % Connect an abitrary number of clients to a given group streamer
 connect_clients(_, 0, Pids) -> Pids;
 connect_clients(Streamer, N, Pids) ->
-    Pid = spawn(fun() -> ngroup:join(Streamer, fun(_) -> ok end) end),
+    Pid = spawn(fun() -> ngroup:join(Streamer, fun(_, _) -> ok end) end),
     connect_clients(Streamer, N - 1, [ Pid | Pids]).
 

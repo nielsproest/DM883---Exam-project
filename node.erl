@@ -37,9 +37,13 @@ loop(S, Callback) ->
 			loop(NewState, Callback);
 
 		{ update_neighbours } ->
-			StreamNeighbours = maps:get(1, S#state.neighbours),
-			StreamNodes = maps:get(1, S#state.nodes),
-			Source = maps:get(1, S#state.source),
+
+			AllKeys = maps:keys(S#state.source),
+			RandomKey = lists:nth(rand:uniform(length(AllKeys)), AllKeys),	
+
+			StreamNeighbours = maps:get(RandomKey, S#state.neighbours),
+			StreamNodes = maps:get(RandomKey, S#state.nodes),
+			Source = maps:get(RandomKey, S#state.source),
 
 			send_kill_signal(Source, dead_neighbours(StreamNeighbours)),
 
@@ -49,13 +53,13 @@ loop(S, Callback) ->
 			case length(AliveNeighbours) < S#state.capacity of
 				true -> 
 					Neighbours = assign_new_neighbours(S#state.capacity, AliveNeighbours, StreamNodes),
-					util:send_msg(Neighbours, { join_new, self() , 1 });
+					util:send_msg(Neighbours, { join_new, self() , RandomKey });
 				false -> 
 					Neighbours = AliveNeighbours
 			end,
 
 			loop(S#state {
-				neighbours = maps:update(1, Neighbours, S#state.neighbours)
+				neighbours = maps:update(RandomKey, Neighbours, S#state.neighbours)
 			}, Callback);
 
 		% Client receives node list
@@ -94,6 +98,7 @@ loop(S, Callback) ->
 			loop(NewState, Callback);
 		{ packet, Msg }  ->
 
+	
 			Stream = Msg#message.stream,
 			Timestamp = maps:get(Stream, S#state.timestamp),
 			Backflow = maps:get(Stream, S#state.backflow),
@@ -112,10 +117,10 @@ loop(S, Callback) ->
 							MessagesToPlay = messages_to_play(MessagesSorted, Timestamp),
 
 							NewBackflow = lists:nthtail(length(MessagesToPlay), MessagesSorted),
-
+							
 							% Send out messages
 							lists:foreach(fun(Message) -> 
-								Callback(Message#message.data),
+								Callback(Message#message.data, Stream),
 								communication:multicast(Neighbours, Message)
 							end, MessagesToPlay),
 
@@ -132,8 +137,11 @@ loop(S, Callback) ->
     end.
 
 messages_to_play(Backflow, CurrentTimestamp) -> messages_to_play(Backflow, CurrentTimestamp, []).
-messages_to_play([ H | T ], CurrentTimestamp, Messages) when H#message.timestamp < CurrentTimestamp  ->
+
+
+messages_to_play([ H | T ], CurrentTimestamp, Messages) when H#message.timestamp - CurrentTimestamp == 1  ->
 	messages_to_play(T, CurrentTimestamp + 1, Messages ++ [ H ]);
+
 messages_to_play(_, _, Messages) -> Messages.
 
 %%----------------------------------------------------------------------------
