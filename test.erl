@@ -4,6 +4,7 @@
 -import_all(group).
 
 % Single node test
+% This test a single one to one connection
 test_to_one() ->
 	io:format("test_to_one\n"),
 	First = spawn(fun() -> ngroup:create(1) end),
@@ -20,7 +21,9 @@ test_to_one() ->
     timer:sleep(5000),
     ok.
 
-% Many nodes (outer layer) test
+% Outer layer test
+% This tests when the client cant connect directly to the sender.
+% So an outer layer test.
 test_to_many() ->
 	io:format("test_to_many\n"),
 	First = spawn(fun() -> ngroup:create(1) end),
@@ -40,6 +43,7 @@ test_to_many() ->
     ok.
 
 % Test with many nodes
+% Tests when there are many receivers.
 test_to_very_many() ->
 	io:format("test_to_very_many\n"),
 	First = spawn(fun() -> ngroup:create(1) end),
@@ -59,6 +63,7 @@ test_to_very_many() ->
     ok.
 
 % Test with many nodes
+% Tests when there are many receivers, and 2 streams.
 test_from_many() ->
 	io:format("test_from_many\n"),
 	First = spawn(fun() -> ngroup:create(1) end),
@@ -80,6 +85,7 @@ test_from_many() ->
     ok.
 
 % Test with mixed nodes
+% Tests when there are 2 streamers, and a mixed number of receivers.
 test_mixed() ->
 	io:format("test_mixed\n"),
 	First = spawn(fun() -> ngroup:create(1) end),
@@ -103,6 +109,8 @@ test_mixed() ->
     ok.
 
 % Test with mixed nodes 2
+% Tests when there are 2 streamers, and a mixed number of receivers.
+% But the client only wants from 1 stream.
 test_mixed2() ->
 	io:format("test_mixed2\n"),
 	First = spawn(fun() -> ngroup:create(1) end),
@@ -125,6 +133,7 @@ test_mixed2() ->
     timer:sleep(5000),
     ok.
 
+% Kills random nodes in some interval
 kill_random(_, 0, _) -> ok;
 kill_random(Delay, N, Nodes) ->
 	timer:sleep(Delay),
@@ -134,6 +143,7 @@ kill_random(Delay, N, Nodes) ->
 	kill_random(Delay, N-1, lists:filter(fun(X) -> X /= RandomNode end, Nodes)).
 
 % Test to kill many nodes (bad case)
+% This tests kills alot of nodes, and tests if the network still works.
 % Rarely fails
 test_death() ->
 	io:format("test_death\n"),
@@ -157,6 +167,7 @@ test_death() ->
 
 
 % Test to kill many nodes (worst case)
+% This tests kills most nodes, and tests if the network still works.
 % Fails often
 test_ultradeath() ->
 	io:format("test_ultradeath\n"),
@@ -178,7 +189,7 @@ test_ultradeath() ->
     timer:sleep(5000),
     ok.
 
-
+% Runs the entire test suite.
 test() ->
 	test_to_one(),
 	test_to_many(),
