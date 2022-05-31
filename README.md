@@ -21,5 +21,5 @@ erl -make
 erl -pa .\bin\
 test:test().
 ````
-This runs multiple tests, some of which are expected to fail.
+This runs multiple tests, including kill tests, where a majority of nodes are killed (this sometimes fails, as it is the worst case).
 This include one to many, many to many, kill test etc.
