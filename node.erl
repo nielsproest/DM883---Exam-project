@@ -52,7 +52,7 @@ loop(S, Callback) ->
 				true -> 
 					io:format("StreamNodes ~p \n", [StreamNodes]),
 					Neighbours = assign_new_neighbours(S#state.capacity, AliveNeighbours, StreamNodes),
-					util:send_msg(Neighbours, { join_new, self() });
+					util:send_msg(Neighbours, { join_new, self() , 1 });
 				false -> 
 					Neighbours = AliveNeighbours
 			end,

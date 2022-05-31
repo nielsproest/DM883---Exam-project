@@ -43,7 +43,7 @@ join(Streamer, Callback, Capacity) ->
 			},
 
 			% Request neighbours to stream to them
-			util:send_msg(S#state.neighbours, { join_new, self() }),
+			util:send_msg(S#state.neighbours, { join_new, self(), 1 }),
 
 			io:format("print: ~p \n ", [S#state.neighbours]),
 
