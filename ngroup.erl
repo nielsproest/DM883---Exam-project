@@ -1,4 +1,4 @@
--module(group).
+-module(ngroup).
 
 -include_lib("headers/records.hrl").
 
