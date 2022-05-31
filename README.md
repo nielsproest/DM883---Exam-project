@@ -15,7 +15,6 @@ app:start().
 ````
 
 ## To test the program, run the following functions:
-....
 The output will be printed out in the terminal. 
 ````
 erl -make
