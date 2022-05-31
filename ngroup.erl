@@ -18,17 +18,35 @@ create(S) ->
 		version = maps:put(1, 0, S#state.version),
 		backflow = maps:put(1, [], S#state.backflow),
         neighbours = maps:put(1, [], S#state.neighbours),
-		nodes = maps:put(1, [self()], S#state.nodes),
-        capacity = 3,
-		max_capacity = 5
+		nodes = maps:put(1, [self()], S#state.nodes)
     },
 
-    node:run(S, fun( _Data ) -> ok end).
-create() -> create(#state {}).
+    node:run(NewState, fun( _Data ) -> ok end),
+
+	NewState.
+create() -> create(#state {
+	source = #{},
+	timestamp = #{},
+	version = #{},
+	backflow = #{},
+	neighbours = #{},
+	nodes = #{},
+	capacity = 3,
+	max_capacity = 5
+}).
 
 
 % Create client and ask to join
-join(Streamer, Callback, Capacity) -> join(Streamer, #state {}, Callback, Capacity).
+join(Streamer, Callback, Capacity) -> join(Streamer, #state {
+	source = #{},
+	timestamp = #{},
+	version = #{},
+	backflow = #{},
+	neighbours = #{},
+	nodes = #{},
+	capacity = 3,
+	max_capacity = 5
+}, Callback, Capacity).
 join(Streamer, Callback) -> join(Streamer, Callback, 5).
 join(Streamer, S, Callback, Capacity) ->
 	Streamer ! { setup, self(), 1 },
@@ -51,7 +69,7 @@ join(Streamer, S, Callback, Capacity) ->
 
 			io:format("print: ~p \n ", [S#state.neighbours]),
 
-			node:run(S, Callback)
+			node:run(NewState, Callback)
 	end,
 
 	NewState.

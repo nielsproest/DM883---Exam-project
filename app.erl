@@ -10,10 +10,10 @@ start() ->
 
     %io:format("Clients: ~p \n", [Clients]),
 
-   spawn(fun() -> ngroup:join(Streamer, fun(Data) -> 
-            io:format("~p received ~p\n", [self(), Data]) 
-        end )   
-    end ),
+   %spawn(fun() -> ngroup:join(Streamer, fun(Data) -> 
+    %        io:format("~p received ~p\n", [self(), Data]) 
+    %    end )   
+   % end ),
 
     timer:sleep(3000),
 
