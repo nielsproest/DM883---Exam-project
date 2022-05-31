@@ -29,9 +29,9 @@ To spawn a new broadcaster, you run:
 ````
 ngroup:create(1)
 ````
-This creates a broadcaster of id 1,.
+This creates a broadcaster of id 1.
 This action is however blocking, so you may wish to spawn a seperate process with it
-`````
+````
 Broadcast = spawn(fun() -> ngroup:create(1) end)
 ````
 When this broadcaster is created, you may now create nodes who want the data.
