@@ -18,7 +18,10 @@ create(S) ->
 		version = maps:put(1, 0, S#state.version),
 		backflow = maps:put(1, [], S#state.backflow),
         neighbours = maps:put(1, [], S#state.neighbours),
-		nodes = maps:put(1, [self()], S#state.nodes)
+		nodes = maps:put(1, [self()], S#state.nodes),
+		capacity = 3,
+		max_capacity = 5
+
     },
 
     node:run(NewState, fun( _Data ) -> ok end),
@@ -59,9 +62,9 @@ join(Streamer, S, Callback, Capacity) ->
 				backflow = maps:put(Stream, [], S#state.backflow),
 				version = maps:put(Stream, maps:get(Stream, Server_S#state.version), S#state.version),
                 neighbours = maps:put(Stream, util:n_random(Capacity, maps:get(Stream, Server_S#state.neighbours)), S#state.neighbours),
-				capacity = Capacity,
-				max_capacity = Capacity + 2,
-				nodes = maps:put(Stream, maps:get(Stream, Server_S#state.nodes), S#state.nodes)
+				nodes = maps:put(Stream, maps:get(Stream, Server_S#state.nodes), S#state.nodes),
+				capacity = 3,
+				max_capacity = 5
 			},
 
 			% Request neighbours to stream to them
