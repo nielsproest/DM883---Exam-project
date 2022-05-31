@@ -4,9 +4,7 @@
 -import_all(group).
 
 start() ->
-
 	Streamer = spawn(fun() -> group:create(1) end),
-
 
     Clients = connect_clients(Streamer, 50, []),
 

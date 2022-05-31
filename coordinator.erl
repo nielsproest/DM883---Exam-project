@@ -2,25 +2,25 @@
 
 -include_lib("headers/records.hrl").
 
--export([handle/3]).
+-export([handle/4]).
 
 
-handle(Server, Nodes, Version) ->
-    loop(Server, Nodes, Version).
+handle(Server, Stream, Nodes, Version) ->
+    loop(Server, Stream, Nodes, Version).
 
 
-loop(Server, Nodes, Version) ->
+loop(Server, Stream, Nodes, Version) ->
     receive 
         { node_dead, ClientPid } ->
             NewNodes = lists:filter(fun(Node) -> Node /= ClientPid end, Nodes),
-            loop(Server, NewNodes, server_supply(Server, NewNodes, Version));
+            loop(Server, Stream, NewNodes, server_supply(Server, Stream, NewNodes, Version));
 
         { node_active, ClientPid } ->
 			NewNodes = Nodes ++ [ClientPid],
-            loop(Server, NewNodes, server_supply(Server, NewNodes, Version))
+            loop(Server, Stream, NewNodes, server_supply(Server, Stream, NewNodes, Version))
     end.
     
 
-server_supply(Server, Nodes, Version) ->
-    Server ! { supply_nodes, Nodes, Version },
+server_supply(Server, Stream, Nodes, Version) ->
+    Server ! { supply_nodes, Nodes, Stream, Version },
     Version + 1.

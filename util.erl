@@ -1,6 +1,7 @@
--module(utility).
+-module(util).
 
 -export([send_msg/2, n_random/2, lists_first/1, lists_last/1, n_exclude/2]).
+
 
 
 lists_first([]) -> ok;

@@ -9,7 +9,7 @@
 -import_all(lists).
 -import_all(network).
 -import_all(communication).
--import_all(utility).
+-import_all(util).
 -import_all(pinger).
 
 
@@ -24,28 +24,33 @@ loop(S, Callback) ->
 	receive 
 
 		% Server receives new node
-		{ setup, ClientPid }  -> 
-			ClientPid ! { current_state, S },
+		{ setup, Client, Stream }  -> 
+			
+			Client ! { current_state, S, Stream },
 
-			S#state.source ! { node_active, ClientPid },
-
+			maps:get(Stream, S#state.source) ! { node_active, Client },
 
 			NewState = S#state {
-				nodes = S#state.nodes ++ [ClientPid]
+				nodes = maps:update_with(Stream, fun(V) -> V ++ [Client] end, S#state.nodes)
 			},
 
 			loop(NewState, Callback);
 
 		{ update_neighbours } ->
+
+
+			StreamNeighbours = maps:get(1, S#state.neighbours),
+			StreamNodes = maps:get(1, S#state.nodes),
+			Source = maps:get(1, S#state.source),
+
+			send_kill_signal(Source, dead_neighbours(StreamNeighbours)),
+
+			AliveNeighbours = alive_neighbours(StreamNeighbours),
 	
-			send_kill_signal(S#state.source, dead_neighbours(S#state.neighbours)),
-
-			AliveNeighbours = alive_neighbours(S#state.neighbours),
-
 			% Check if it is possible to assign new neighbours
 			case length(AliveNeighbours) < S#state.capacity of
 				true -> 
-					Neighbours = assign_new_neighbours(S#state.capacity, AliveNeighbours, S#state.nodes);
+					Neighbours = assign_new_neighbours(S#state.capacity, AliveNeighbours, StreamNodes);
 				false -> 
 					Neighbours = AliveNeighbours
 			end,
@@ -55,83 +60,82 @@ loop(S, Callback) ->
 			}, Callback);
 
 		% Client receives node list
-		{ supply_nodes, Nodes, Version } when Version > S#state.version ->
-			NewState = S#state {
-				nodes = Nodes,
-				neighbours = lists:filter(fun(X) -> lists:member(X, Nodes) end, S#state.neighbours),
-				version = Version
-			},
-			utility:send_msg(S#state.neighbours, {supply_nodes, Nodes, Version}),
+		{ supply_nodes, Nodes, Stream, Version } ->
 
-			loop(NewState, Callback);
-
-		{ join_new, ClientPid } ->
-
-			case length(S#state.neighbours) =< S#state.capacity of
+			case Version > maps:get(Stream, S#state.version) of
 				true -> 
 					NewState = S#state {
-						neighbours = lists:usort(S#state.neighbours ++ [ClientPid] )
+					nodes = maps:update(Stream, Nodes, S#state.nodes),
+					neighbours = maps:update_with(Stream, fun(V) -> lists:filter(fun(X) -> lists:member(X, Nodes) end, V) end,  S#state.neighbours),
+					version = maps:update(Stream, Version, S#state.version)
+				},
+				util:send_msg(S#state.neighbours, {supply_nodes, Nodes, Stream, Version}),
+				loop(NewState, Callback);
+				false -> loop(S, Callback)
+			end;
+		{ join_new, Client, Stream } ->
+
+			case length(maps:get(Stream, S#state.neighbours)) =< S#state.capacity of
+				true -> 
+					NewState = S#state {
+						neighbours = maps:update_with(Stream, fun(V) -> lists:usort(V ++ [Client]) end, S#state.neighbours)
 					},
 		
 					loop(NewState, Callback);
 				false -> 
-					ClientPid ! { join_refuse, self() },
+					Client ! { join_refuse, self(), Stream },
 					loop(S, Callback)
 			end;
 
 		% Client refused to join
-		{ join_refuse, ClientPid } ->
+		{ join_refuse, Client, Stream} ->
 			NewState = S#state {
-				neighbours = lists:filter(fun(X) -> X /= ClientPid end, S#state.neighbours)
+				neighbours = maps:update_with(Stream, fun(V) -> lists:filter(fun(X) -> X /= Client end,  V) end, S#state.neighbours)
 			},
 			loop(NewState, Callback);
+		{ packet, Msg }  ->
 
-		% Receives data
-		{ packet, Data } when length(S#state.backflow) > 10 ->
-			PrevState = backflow_add(S,Data,Callback),
-			[Callback(X#message.data) || X <- PrevState#state.backflow],
-			[communication:multicast(S#state.neighbours, X) || X <- PrevState#state.backflow],
+			Stream = Msg#message.stream,
+			Timestamp = maps:get(Stream, S#state.timestamp),
+			Backflow = maps:get(Stream, S#state.backflow),
 
-			NewState = PrevState#state {
-				backflow = [],
-				timestamp = Data#message.timestamp
-			},
-            loop(NewState, Callback);
+			case Msg#message.timestamp > Timestamp of
+				true ->
+					case length(Backflow) > 10 of
+						true -> loop(S#state {
+							backflow = [],
+							timestamp = Msg#message.timestamp
+						}, Callback);
+						false ->
+							MessagesSorted = lists:usort(fun(X) -> X#message.timestamp end, Backflow ++ [Msg]),
+							Neighbours = maps:get(Stream, S#state.neighbours),
 
-		{ packet, Data } when Data#message.timestamp > S#state.timestamp ->
-			% Internal processing
-			NewState = backflow_add(S,Data,Callback),
+							MessagesToPlay = messages_to_play(MessagesSorted, Timestamp),
 
-            % Listen for next message and increment timestamp
-            loop(NewState, Callback)
+							NewBackflow = lists:nthtail(length(MessagesToPlay), MessagesSorted),
+
+							% Send out messages
+							lists:foreach(fun(Message) -> 
+								Callback(Message#message.data),
+								communication:multicast(Neighbours, Message)
+							end, MessagesToPlay),
+
+							NewState = S#state {
+								backflow = maps:update(Stream, NewBackflow, S#state.backflow),
+								timestamp = maps:update_with(Stream, fun(V) -> V + length(MessagesToPlay) end, S#state.timestamp)
+							},
+
+							% Listen for next message and increment timestamp
+							loop(NewState, Callback)
+					end;
+				false -> loop(S, Callback)
+			end
     end.
 
-
-% Handles "backflows" (missing messages)
-backflow_process(S, [H | T], C, A, B) when B-A == 1 ->
-	% Send message along
-	communication:multicast(
-		S#state.neighbours, H
-	),
-	C(H#message.data),
-	% Update timestamp
-	NewState = S#state {
-		timestamp = H#message.timestamp
-	},
-	backflow_process(NewState,T,C,A,H#message.timestamp);
-backflow_process(S, T, _, _, _) ->
-	S#state {
-		backflow = T
-	}.
-backflow_add(S, Data, C) ->
-	% Current records
-	_Records = S#state.backflow ++ [Data],
-	% Their timestamps, sorted
-	IDS = lists:usort([X#message.timestamp || X <- _Records]),
-	% Records, sorted
-	Datas = [utility:lists_first([Y || Y <- _Records, Y#message.timestamp == X]) || X <- IDS],
-	First = utility:lists_first(Datas),
-	backflow_process(S, Datas, C, S#state.timestamp, First#message.timestamp).
+messages_to_play(Backflow, CurrentTimestamp) -> messages_to_play(Backflow, CurrentTimestamp, []).
+messages_to_play([ H | T ], CurrentTimestamp, Messages) when H#message.timestamp < CurrentTimestamp  ->
+	messages_to_play(T, CurrentTimestamp + 1, Messages ++ [ H ]);
+messages_to_play(_, _, Messages) -> Messages.
 
 %%----------------------------------------------------------------------------
 %% @doc Select a random set of new neighbours from global set and assign
@@ -140,12 +144,10 @@ backflow_add(S, Data, C) ->
 %%----------------------------------------------------------------------------
 -spec assign_new_neighbours(integer(), [node()], [node()]) -> [node()].
 assign_new_neighbours(Capacity, Neighbours, Nodes) ->
-	Missing = Capacity - length(Neighbours),
-	NewNeighbours = lists:usort(Neighbours ++ utility:n_random(Missing, Nodes)),
-	utility:send_msg(NewNeighbours, { join_new, self() }),
+	RemainingCapacity = Capacity - length(Neighbours),
+	NewNeighbours = lists:usort(Neighbours ++ util:n_random(RemainingCapacity, Nodes)),
+	util:send_msg(NewNeighbours, { join_new, self() }),
 	NewNeighbours.
-
-
 
 %%----------------------------------------------------------------------------
 %% @doc Send a kill signal for a list of nodes to a source.

@@ -10,10 +10,6 @@ multicast(Neighbours, Data) ->
 send([], _) -> ok;
 send([H | T], Data) ->
 
-    Msg = Data#message {
-        sender = self()
-    },
+    H ! { packet, Data },
 
-    H ! { packet, Msg },
-
-    send(T, Msg).
+    send(T, Data).
