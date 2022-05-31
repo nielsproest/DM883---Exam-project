@@ -45,12 +45,9 @@ loop(S, Callback) ->
 
 			AliveNeighbours = alive_neighbours(StreamNeighbours),
 
-			io:format("Update: ~p. \n", [S#state.capacity]),
-	
 			% Check if it is possible to assign new neighbours
 			case length(AliveNeighbours) < S#state.capacity of
 				true -> 
-					io:format("StreamNodes ~p \n", [StreamNodes]),
 					Neighbours = assign_new_neighbours(S#state.capacity, AliveNeighbours, StreamNodes),
 					util:send_msg(Neighbours, { join_new, self() , 1 });
 				false -> 
@@ -64,7 +61,6 @@ loop(S, Callback) ->
 		% Client receives node list
 		{ supply_nodes, Nodes, Stream, Version } ->
 
-			io:format("Supply. \n"),
 			case Version > maps:get(Stream, S#state.version) of
 				true -> 
 					NewState = S#state {
@@ -107,10 +103,10 @@ loop(S, Callback) ->
 					case length(Backflow) > 10 of
 						true -> loop(S#state {
 							backflow = [],
-							timestamp = Msg#message.timestamp
+							timestamp = maps:update(Stream, Msg#message.timestamp, S#state.timestamp)
 						}, Callback);
 						false ->
-							MessagesSorted = lists:usort(fun(X) -> X#message.timestamp end, Backflow ++ [Msg]),
+							MessagesSorted = lists:usort(fun(A,B) -> A#message.timestamp =< B#message.timestamp end, Backflow ++ [Msg]),
 							Neighbours = maps:get(Stream, S#state.neighbours),
 
 							MessagesToPlay = messages_to_play(MessagesSorted, Timestamp),
@@ -148,7 +144,6 @@ messages_to_play(_, _, Messages) -> Messages.
 -spec assign_new_neighbours(integer(), [node()], [node()]) -> [node()].
 assign_new_neighbours(Capacity, Neighbours, Nodes) ->
 	RemainingCapacity = Capacity - length(Neighbours),
-	io:format("Dump: ~p~p \n", [RemainingCapacity, Nodes]),
 	NewNeighbours = lists:usort(Neighbours ++ util:n_random(RemainingCapacity, Nodes)),
 	NewNeighbours.
 
