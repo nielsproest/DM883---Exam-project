@@ -1,4 +1,6 @@
-## Building the project
+## Welcome to the exam project for DM883: Distributed Systems
+
+## To building the project
 To compile all files in root do.
 ````
 erl -make
@@ -11,3 +13,7 @@ erl -make
 erl -pa .\bin\
 app:start().
 ````
+
+## To test the program, run the following functions:
+....
+The output will be printed out in the terminal. 
