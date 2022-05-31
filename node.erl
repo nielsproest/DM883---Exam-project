@@ -58,7 +58,7 @@ loop(S, Callback) ->
 			end,
 
 			loop(S#state {
-				neighbours = Neighbours
+				neighbours = maps:update(1, Neighbours, S#state.neighbours)
 			}, Callback);
 
 		% Client receives node list
