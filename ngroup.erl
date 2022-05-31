@@ -10,36 +10,40 @@
 -export([create/0, create/1, join/2, join/3, stream/2]).
 
 % Create server
-create() -> create(3).
-create(Capacity) ->
+create(S) ->
 	Coordinator = spawn_link( fun() -> coordinator:handle(self(), 1, [self()], 0) end),
-    S = #state{
-        source = #{1 => Coordinator },
-		timestamp = #{1 => 0},
-		version = #{1 => 0},
-		backflow = #{1 => []},
-        neighbours = #{1 => []},
-		nodes = #{1 => [self()]},
-        capacity = Capacity,
-		max_capacity = Capacity + 2
+    NewState = #state{
+        source = maps:put(1, Coordinator, S#state.source),
+		timestamp = maps:put(1, 0, S#state.timestamp),
+		version = maps:put(1, 0, S#state.version),
+		backflow = maps:put(1, [], S#state.backflow),
+        neighbours = maps:put(1, [], S#state.neighbours),
+		nodes = maps:put(1, [self()], S#state.nodes),
+        capacity = 3,
+		max_capacity = 5
     },
 
     node:run(S, fun( _Data ) -> ok end).
+create() -> create(#state {}).
+
 
 % Create client and ask to join
-join(Streamer, Callback, Capacity) ->
-	Streamer ! { setup, self() },
+join(Streamer, Callback, Capacity) -> join(Streamer, #state {}, Callback, Capacity).
+join(Streamer, Callback) -> join(Streamer, Callback, 5).
+join(Streamer, S, Callback, Capacity) ->
+	Streamer ! { setup, self(), 1 },
 	receive
 		{ current_state, Server_S, Stream } -> 
-			S = #state {
-				source = #{ 1 => Server_S#state.source },
-				timestamp = #{ 1 => Server_S#state.timestamp },
-				backflow = #{ 1 => []},
-				version = #{1 => Server_S#state.version},
-                neighbours = #{ 1 => util:n_random(Capacity, Server_S#state.nodes) },
+			io:format("Dump ~p\n", [Stream]),
+			NewState = S#state {
+				source = maps:put(Stream, maps:get(Stream, Server_S#state.source), S#state.source),
+				timestamp = maps:put(Stream, maps:get(Stream, Server_S#state.timestamp), S#state.timestamp),	
+				backflow = maps:put(Stream, [], S#state.backflow),
+				version = maps:put(Stream, maps:get(Stream, Server_S#state.version), S#state.version),
+                neighbours = maps:put(Stream, util:n_random(Capacity, maps:get(Stream, Server_S#state.neighbours)), S#state.neighbours),
 				capacity = Capacity,
 				max_capacity = Capacity + 2,
-				nodes = #{ 1 => Server_S#state.nodes }
+				nodes = maps:put(Stream, maps:get(Stream, Server_S#state.nodes), S#state.nodes)
 			},
 
 			% Request neighbours to stream to them
@@ -48,9 +52,9 @@ join(Streamer, Callback, Capacity) ->
 			io:format("print: ~p \n ", [S#state.neighbours]),
 
 			node:run(S, Callback)
-	end.
-join(Streamer, Callback) -> join(Streamer, Callback, 5).
+	end,
 
+	NewState.
 
 
 stream(_, [], _) -> ok;

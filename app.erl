@@ -4,16 +4,16 @@
 -import_all(group).
 
 start() ->
-	Streamer = spawn(fun() -> ngroup:create(1) end),
+	Streamer = spawn(fun() -> ngroup:create() end),
 
     %Clients = connect_clients(Streamer, 1, []),
 
     %io:format("Clients: ~p \n", [Clients]),
 
-   % spawn(fun() -> group:join(Streamer, fun(Data) -> 
-   %         io:format("~p received ~p\n", [self(), Data]) 
-   %     end )   
-   % end ),
+   spawn(fun() -> ngroup:join(Streamer, fun(Data) -> 
+            io:format("~p received ~p\n", [self(), Data]) 
+        end )   
+    end ),
 
     timer:sleep(3000),
 
