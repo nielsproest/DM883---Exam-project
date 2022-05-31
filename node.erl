@@ -96,6 +96,7 @@ loop(S, Callback) ->
 				neighbours = maps:update_with(Stream, fun(V) -> lists:filter(fun(X) -> X /= Client end,  V) end, S#state.neighbours)
 			},
 			loop(NewState, Callback);
+		{ die } -> ok;
 		{ packet, Msg }  ->
 
 	
