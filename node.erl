@@ -102,7 +102,7 @@ loop(S, Callback) ->
 				true ->
 					case length(Backflow) > 10 of
 						true -> loop(S#state {
-							backflow = [],
+							backflow = maps:update(Stream, [], S#state.backflow),
 							timestamp = maps:update(Stream, Msg#message.timestamp, S#state.timestamp)
 						}, Callback);
 						false ->
